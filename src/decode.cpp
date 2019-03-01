@@ -140,19 +140,19 @@ public:
 	}
 	void constant_integer(uint16_t index, uint8_t tag) {
 		uint32_t integer = next_u4();
-		std::cout << '@' << index << "constant_integer = " << integer << std::endl;
+		std::cout << '@' << index << " constant_integer = " << integer << std::endl;
 	}
 	void constant_float(uint16_t index, uint8_t tag) {
 		float f32 = next_float();
-		std::cout << '@' << index << "constant_float = " << f32 << std::endl;
+		std::cout << '@' << index << " constant_float = " << f32 << std::endl;
 	}
 	void constant_long(uint16_t index, uint8_t tag) {
 		uint64_t longint = next_u8();
-		std::cout << '@' << index << "constant_long = " << longint << std::endl;
+		std::cout << '@' << index << " constant_long = " << longint << std::endl;
 	}
 	void constant_double(uint16_t index, uint8_t tag) {
 		uint64_t f64 = next_double();
-		std::cout << '@' << index << "constant_double = " << f64 << std::endl;
+		std::cout << '@' << index << " constant_double = " << f64 << std::endl;
 	}
 	void constant_name_and_type(uint16_t index, uint8_t tag) {
 		uint16_t name_index = next_u2();
