@@ -312,20 +312,22 @@ public:
 		uint32_t length = next_u4();
 		std::cout << '@' << index << " attribute_info - attribute_name_index " << attribute_name_index << " length " << length;
 		if (code_index_.find(attribute_name_index) != code_index_.end()) {
-			std::cout << " Code attribute detected! ";
+			std::cout << " Code attribute detected! " << std::endl;
+			attribute_code(index);
+		} else {
+			if (constant_value_index_.find(attribute_name_index) != constant_value_index_.end()) {
+				std::cout << " ConstantValue attribute detected! ";
+			}
+			if (exceptions_index_.find(attribute_name_index) != exceptions_index_.end()) {
+				std::cout << " Exceptions attribute detected! ";
+			}
+			std::cout << std::endl << std::hex;
+			for (uint32_t index = 0; index < length; ++index) {
+				std::cout << next_u1() << ' '; // TODO handle attributes: constants, code, exception
+			}
+			std::cout << std::dec;
+			std::cout << std::endl;
 		}
-		if (constant_value_index_.find(attribute_name_index) != constant_value_index_.end()) {
-			std::cout << " ConstantValue attribute detected! ";
-		}
-		if (exceptions_index_.find(attribute_name_index) != exceptions_index_.end()) {
-			std::cout << " Exceptions attribute detected! ";
-		}
-		std::cout << std::endl << std::hex;
-		for (uint32_t index = 0; index < length; ++index) {
-			std::cout << next_u1() << ' '; // TODO handle attributes: constants, code, exception
-		}
-		std::cout << std::dec;
- 		std::cout << std::endl;
 	}
 	void methods() {
 		uint16_t length = next_u2();
@@ -340,6 +342,32 @@ public:
 		uint16_t descriptor_index = next_u2();
 		std::cout << '@' << index << " method_info - access_flags " << access_flags << " name_index " << name_index << " descriptor_index " << descriptor_index << std::endl;
 		attributes("method_info");
+	}
+	void attribute_code(uint16_t index) {
+		uint16_t max_stack = next_u2();
+		uint16_t max_locals = next_u2();
+		std::cout << '@' << index << " attribute_code - max_stack " << max_stack << " max_locals " << max_locals;		code();
+		exceptions();
+		attributes("code");
+	}
+	void code() {
+		uint32_t code_length = next_u4();
+		std::cout << " code length: " << code_length << std::hex << std::endl;
+		for (uint32_t index = 0; index < code_length; ++index) {
+			std::cout << next_u1() << ' '; // code
+		}
+		std::cout << std::dec << std::endl;
+	}
+	void exceptions() {
+		uint16_t exception_table_length = next_u2();
+		std::cout << "exception table length: " << exception_table_length << std::endl;
+		for (uint16_t index = 0; index < exception_table_length; ++index) {
+			uint16_t start_pc = next_u2();
+			uint16_t end_pc = next_u2();
+			uint16_t handler_pc = next_u2();
+			uint16_t catch_pc = next_u2();
+			std::cout << "start_pc " << start_pc << " end_pc " << end_pc << " handler_pc " << handler_pc << " catch_pc " << catch_pc << std::endl;
+		}
 	}
 private:
 	std::string filename_;
