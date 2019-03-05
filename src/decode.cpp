@@ -1,6 +1,63 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <vector>
+
+struct Index_Pair {
+	uint16_t first;
+	uint16_t second;
+};
+
+struct Constant_Info {
+	uint8_t tag;
+	union {
+		Index_Pair index;
+	    uint32_t u32;
+	    float f32;
+		uint64_t u64;
+		double f64;
+	} data;
+	std::string utf8;
+	void get(uint16_t& first) {
+		first = data.index.first;
+	}
+	void get(uint16_t& first, uint16_t& second) {
+		first = data.index.first;
+		second = data.index.second;
+	}
+	void get(uint32_t& r) {
+		r = data.u32;
+	}
+	void get(float& r) {
+		r = data.f32;
+	}
+	void get(uint64_t& r) {
+		r = data.u64;
+	}
+	void get(double& r) {
+		r = data.f64;
+	}
+	void set(uint16_t first) {
+		data.index.first = first;
+	}
+	void set(uint16_t first, uint16_t second) {
+		data.index.first = first;
+		data.index.second = second;
+	}
+	void set(uint32_t r) {
+		data.u32 = r;
+	}
+	void set(float r) {
+		data.f32 = r;
+	}
+	void set(uint64_t r) {
+		data.u64 = r;
+	}
+	void set(double r) {
+		data.f64 = r;
+	}
+};
+
 
 struct From {
 	From() : filename_("Statics.class"), classfile_(filename_, classfile_.binary | classfile_.in ) {	};
@@ -60,6 +117,7 @@ public:
 	void constant_pool() {
 		uint16_t length = next_u2();
 		std::cout << "Constant pool length: " << length << std::endl;
+		constants_.resize(length);
 		for (uint16_t index = 1; index < length; ++index) {
 			index += constant(index);
 		}
@@ -79,6 +137,7 @@ public:
 	};
 	uint16_t constant(uint16_t index) {
 		uint8_t tag = next_u1();
+		constants_[index].tag = tag;
 		switch (tag) {
 			case (Class):
 				constant_class(index, tag);
@@ -117,11 +176,13 @@ public:
 	}
 	void constant_class(uint16_t index, uint8_t tag) {
 		uint16_t name_index = next_u2();
+		constants_[index].set(name_index);
 		std::cout << '@' << index << " constant_class.name_index = " << name_index << std::endl;
 	}
 	void constant_xref(uint16_t index, uint8_t tag) {
 		uint16_t class_index = next_u2();
 		uint16_t name_and_type_index = next_u2();
+		constants_[index].set(class_index, name_and_type_index);
 		std::cout << '@' << index << " constant_";
 		if (9 == tag) {
 			std::cout << "Fieldref";
@@ -136,42 +197,55 @@ public:
 	}
 	void constant_string(uint16_t index, uint8_t tag) {
 		uint16_t string_index = next_u2();
+		constants_[index].set(string_index);
 		std::cout << '@' << index << " constant_string.string_index = " << string_index << std::endl;
 	}
 	void constant_integer(uint16_t index, uint8_t tag) {
 		uint32_t integer = next_u4();
+		constants_[index].set(integer);
 		std::cout << '@' << index << " constant_integer = " << integer << std::endl;
 	}
 	void constant_float(uint16_t index, uint8_t tag) {
 		float f32 = next_float();
+		constants_[index].set(f32);
 		std::cout << '@' << index << " constant_float = " << f32 << std::endl;
 	}
 	void constant_long(uint16_t index, uint8_t tag) {
 		uint64_t longint = next_u8();
+		constants_[index].set(longint);
 		std::cout << '@' << index << " constant_long = " << longint << std::endl;
 	}
 	void constant_double(uint16_t index, uint8_t tag) {
 		uint64_t f64 = next_double();
+		constants_[index].set(f64);
 		std::cout << '@' << index << " constant_double = " << f64 << std::endl;
 	}
 	void constant_name_and_type(uint16_t index, uint8_t tag) {
 		uint16_t name_index = next_u2();
 		uint16_t descriptor_index = next_u2();
+		constants_[index].set(name_index, descriptor_index);
 		std::cout << '@' << index << " constant_name_and_type.name_index = " << name_index << " this.descriptor_index = " << descriptor_index << std::endl;
 	}
 	void constant_utf8(uint16_t index, uint8_t tag) {
 		uint16_t length = next_u2();
-		std::cout << '@' << index << " constant_utf8.length = " << length << " \"";
 		for (uint16_t l = 0; l < length; ++l) {
 			char c = next_u1();
-			std::cout << c; // TODO make it output utf8 correctly, check
+			constants_[index].utf8.push_back(c);
 		}
+		std::cout << '@' << index << " constant_utf8.length = " << length << " \"";
+		std::cout << constants_[index].utf8;
 		std::cout << '"' << std::endl;
 	}
 	enum ACC {
 		PUBLIC = 0x0001,
+		PRIVATE = 0x0002,
+		PROTECTED = 0x0004,
+		STATIC = 0x0008,
 		FINAL = 0x0010,
-		SUPER = 0x0020,
+		SUPER_OR_SYNCHRONIZED = 0x0020,
+		VOLATILE = 0x0040,
+		TRANSIENT = 0x0080,
+		NATIVE = 0x0100,
 		INTERFACE = 0x0200,
 		ABSTRACT = 0x0400
 	};
@@ -182,7 +256,7 @@ public:
 		std::cout << "access_flags " << std::hex << access_flags << std::dec << " – ";
 		if (ACC::PUBLIC & access_flags) std::cout << "public ";
 		if (ACC::FINAL & access_flags) std::cout << "final ";
-		if (ACC::SUPER & access_flags) std::cout << "super ";
+		if (ACC::SUPER_OR_SYNCHRONIZED & access_flags) std::cout << "super ";
 		if (ACC::INTERFACE & access_flags) std::cout << "interface ";
 		if (ACC::ABSTRACT & access_flags) std::cout << "abstract ";
 		std::cout << std::endl;
@@ -248,6 +322,7 @@ public:
 private:
 	std::string filename_;
 	std::fstream classfile_;
+	std::vector<Constant_Info> constants_;
 };
 
 int main() {
