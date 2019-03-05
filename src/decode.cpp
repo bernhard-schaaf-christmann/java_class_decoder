@@ -59,7 +59,18 @@ struct Constant_Info {
 
 
 struct From {
-	From() : filename_("Statics.class"), classfile_(filename_, classfile_.binary | classfile_.in ) {	};
+	From() : filename_("Statics.class"), classfile_(filename_, classfile_.binary | classfile_.in ) {};
+	int class_file() {
+		magic();
+		version();
+		constant_pool();
+		flags_and_classes();
+		interfaces();
+		fields();
+		methods();
+		attributes("class");
+		return 0;
+	}
 public:
 	uint32_t next_u1() {
 		uint8_t value = classfile_.get();
@@ -380,15 +391,6 @@ private:
 
 int main() {
 	From from;
-
-	from.magic();
-	from.version();
-	from.constant_pool();
-	from.flags_and_classes();
-	from.interfaces();
-	from.fields();
-	from.methods();
-	from.attributes("class");
-	return 0;
+	return from.class_file();
 }
 
