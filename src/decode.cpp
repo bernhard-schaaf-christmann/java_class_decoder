@@ -2,16 +2,15 @@
 #include <fstream>
 #include <string>
 #include <vector>
-
-struct Index_Pair {
-	uint16_t first;
-	uint16_t second;
-};
+#include <set>
 
 struct Constant_Info {
 	uint8_t tag;
 	union {
-		Index_Pair index;
+		struct {
+			uint16_t first;
+			uint16_t second;
+		} index;
 	    uint32_t u32;
 	    float f32;
 		uint64_t u64;
@@ -232,9 +231,22 @@ public:
 			char c = next_u1();
 			constants_[index].utf8.push_back(c);
 		}
+		auto& utf8 = constants_[index].utf8;
 		std::cout << '@' << index << " constant_utf8.length = " << length << " \"";
-		std::cout << constants_[index].utf8;
-		std::cout << '"' << std::endl;
+		std::cout << constants_[index].utf8 << '"';
+		if (utf8 == "ConstantValue") {
+			constant_value_index_.insert(index);
+			std::cout << " inserted into set constant_value_index";
+		}			
+		if (utf8 == "Code") {
+			code_index_.insert(index);
+			std::cout << " inserted into set code_index";
+		}			
+		if (utf8 == "Exceptions") {
+			exceptions_index_.insert(index);
+			std::cout << " inserted into set exceptions_index";
+		}			
+		std::cout << std::endl;
 	}
 	enum ACC {
 		PUBLIC = 0x0001,
@@ -298,12 +310,22 @@ public:
 	void attribute_info(uint16_t index) {
 		uint16_t attribute_name_index = next_u2();
 		uint32_t length = next_u4();
-		std::cout << '@' << index << " attribute_info - attribute_name_index " << attribute_name_index << " length " << length << std::endl;
-		std::cout << std::hex;
+		std::cout << '@' << index << " attribute_info - attribute_name_index " << attribute_name_index << " length " << length;
+		if (code_index_.find(attribute_name_index) != code_index_.end()) {
+			std::cout << " Code attribute detected! ";
+		}
+		if (constant_value_index_.find(attribute_name_index) != constant_value_index_.end()) {
+			std::cout << " ConstantValue attribute detected! ";
+		}
+		if (exceptions_index_.find(attribute_name_index) != exceptions_index_.end()) {
+			std::cout << " Exceptions attribute detected! ";
+		}
+		std::cout << std::endl << std::hex;
 		for (uint32_t index = 0; index < length; ++index) {
 			std::cout << next_u1() << ' '; // TODO handle attributes: constants, code, exception
 		}
-		std::cout << std::dec << std::endl;
+		std::cout << std::dec;
+ 		std::cout << std::endl;
 	}
 	void methods() {
 		uint16_t length = next_u2();
@@ -323,6 +345,9 @@ private:
 	std::string filename_;
 	std::fstream classfile_;
 	std::vector<Constant_Info> constants_;
+	std::set<uint16_t> code_index_;
+	std::set<uint16_t> constant_value_index_;
+	std::set<uint16_t> exceptions_index_;
 };
 
 int main() {
